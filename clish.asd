@@ -10,7 +10,6 @@
                  (:file "utils")
                  (:file "core"))))
   :description ""
-  :entry-point "clish:main"
   :in-order-to ((test-op (test-op "clish/tests"))))
 
 (defsystem "clish/tests"

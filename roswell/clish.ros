@@ -1,0 +1,23 @@
+#!/bin/sh
+#|-*- mode:lisp -*-|#
+#|
+exec ros -Q -- $0 "$@"
+|#
+(progn ;;init forms
+  (ros:ensure-asdf)
+  #+quicklisp
+  (ql:quickload :uiop :silent t)
+  (asdf:load-asd (eval `(or ,@(mapcar (lambda (folder)
+                                        (probe-file (concatenate 'string folder "/clish.asd")))
+                                      (list "." ".." (uiop:getenv "CLISH"))))))
+  (ql:quickload :clish :silent t))
+
+(defpackage :ros.script.clish
+  (:use :cl))
+(in-package :ros.script.clish)
+
+(defun main (&rest argv)
+  (declare (ignorable argv))
+  (in-package :clish)
+  (clish:main))
+;;; vim: set ft=lisp lisp:
