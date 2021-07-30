@@ -8,6 +8,7 @@
                 :components
                 ((:file "package")
                  (:file "utils")
+                 (:file "cli")
                  (:file "core"))))
   :description ""
   :in-order-to ((test-op (test-op "clish/tests"))))

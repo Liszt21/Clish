@@ -18,6 +18,5 @@ exec ros -Q -- $0 "$@"
 
 (defun main (&rest argv)
   (declare (ignorable argv))
-  (in-package :clish)
-  (clish:main))
+  (apply #'clish:cli argv))
 ;;; vim: set ft=lisp lisp:

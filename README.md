@@ -1,5 +1,0 @@
-# clish
-
-## Usage
-
-## Installation

@@ -21,15 +21,15 @@
 (defun repl ()
   (set-macro-character #\! #'shell-mode)
   (loop (handle-errors
-    (promot)
-    (setf +++ ++ ++ + + - - (read))
-    (when (position - '((quit) (exit)) :test #'equal)
-      (format t "Exit...")
-      (return-from repl))
-    (setf /// // // / / (multiple-value-list (eval -)))
-    (setf *** ** ** * * (first /))
-    (format t "~& --> ~{~S~^ ;~%     ~}~%" /))
-  ))
+         (promot)
+         (setf +++ ++ ++ + + - - (read))
+         (when (position - '((quit) (exit)) :test #'equal)
+           (format t "Exit...")
+           (return-from repl))
+         (setf /// // // / / (multiple-value-list (eval -)))
+         (setf *** ** ** * * (first /))
+         (format t "~& --> ~{~S~^ ;~%     ~}~%" /))))
+  
 
 (defun read-shell-script (stream)
   (loop for c = (read-char)
@@ -42,3 +42,8 @@
 
 (defun main ()
   (repl))
+
+(defcli cli
+    (nil #'repl)
+  ("help" (lambda (command) (format t "Help ~a" command))))
+
