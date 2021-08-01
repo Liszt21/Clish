@@ -8,6 +8,19 @@
         unless (string= sub "") collect sub
         while j))
 
+(defun join (str list)
+  (if (null list)
+      ""
+    (let ((result (first list)))
+      (dolist (item (cdr list))
+        (setf result (concatenate 'string result str item)))
+      result)))
+
+(defun get-function-arguments (fn)
+  (let ((stream (make-string-output-stream)))
+    (describe fn stream)
+    (car (member "Lambda-list:" (split (get-output-stream-string stream) #\NewLine) :test #'search))))
+
 (defun decode-argument (source)
   (if (position #\- source)
       (intern (string-upcase (string-left-trim '(#\- ) source)) :keyword)
@@ -43,17 +56,21 @@
          (cmd (car args))
          (rest (cdr args))
          (fn (cdr (assoc cmd cmds :test #'equal))))
-    (if fn
-        (apply fn rest)
-        (if (or (equal cmd "help") (member :help rest))
-            (pprint "Help")
-            (progn
-              (pprint "command not exist")
-              (pprint args)
-              (pprint cmds))))))
+    (if (member :help args)
+        (format t "Help command: ~a~%~A~%"
+                cmd
+                (if fn (get-function-arguments fn) "Command not registered"))
+        (if fn
+            (apply fn rest)
+            (format t "Command ~A not registered~%~A~%" cmd (helper x))))))
 
 (defmethod register-command ((x command-line-interface) name function)
   (push (cons name function) (slot-value x 'commands)))
+
+(defmethod helper ((x command-line-interface))
+  (let ((cmds (slot-value x 'commands)))
+    (concatenate 'string (format nil "Commands:~%")
+                 (join "" (mapcar (lambda (item) (format nil "    ~A: ~A~%" (car item) (get-function-arguments (cdr item)))) cmds)))))
 
 (defmacro defcli (name &rest rest)
   (pprint rest)
@@ -63,13 +80,15 @@
      (defun ,name (&rest args)
             (execute-command ,name args))))
 
-;; (defun hello (name)
-;;   (format nil "Hello ~a" name))
+(defun hello (name)
+  (format nil "Hello ~a" name))
 
-;; ;; (pprint (macroexpand '(defcli cli ("hello" #'hello) ("foo" (lambda () :bar)))))
+;; (pprint (macroexpand '(defcli cli ("hello" #'hello) ("foo" (lambda () :bar)))))
 ;; (defcli cli ("hello" #'hello) ("foo" (lambda () :bar)))
 
 ;; (slot-value cli 'commands)
 
 ;; (cli "hello clish")
 ;; (cli "foo")
+
+;; (helper cli)
