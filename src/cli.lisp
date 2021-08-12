@@ -48,24 +48,36 @@
     (append (reverse cmds) (reverse keys))))
 
 (defclass command-line-interface ()
-  ((commands :initform '())))
+  ((commands :initform '())
+   (name :initform nil)
+   (doc :initform nil)
+   (pre :initform (lambda (&optional command args) (format t "Pre command")))
+   (post :initform (lambda (&optional command args result) (format t "Post command")))
+   (help :initform (lambda (&optional command args) "Help"))))
 
 (defmethod execute-command ((x command-line-interface) arguments)
   (let* ((cmds (slot-value x 'commands))
-         (args (restruct-arguments arguments))
-         (cmd (car args))
+         (args (apply #'restruct-arguments arguments))
+         (cmd (intern (string-upcase (car args))))
          (rest (cdr args))
-         (fn (cdr (assoc cmd cmds :test #'equal))))
+         (fn (cdr (assoc cmd cmds))))
     (if (member :help args)
         (format t "Help command: ~a~%~A~%"
                 cmd
                 (if fn (get-function-arguments fn) "Command not registered"))
         (if fn
-            (apply fn rest)
+            (let* ((pre (apply (slot-value x 'pre) (list cmd rest)))
+                   (rst (apply fn rest))
+                   (post (apply (slot-value x 'post) (list cmd rest rst))))
+                  rst)
             (format t "Command ~A not registered~%~A~%" cmd (helper x))))))
 
-(defmethod register-command ((x command-line-interface) name function)
-  (push (cons name function) (slot-value x 'commands)))
+(defmethod dispatch ((x command-line-interface) arguments))
+
+(defmethod register-command ((x command-line-interface) key value)
+  (if (keywordp key)
+      (setf (slot-value x (intern (string key))) value)
+      (push (cons key value) (slot-value x 'commands))))
 
 (defmethod helper ((x command-line-interface))
   (let ((cmds (slot-value x 'commands)))
@@ -73,15 +85,16 @@
                  (join "" (mapcar (lambda (item) (format nil "    ~A: ~A~%" (car item) (get-function-arguments (cdr item)))) cmds)))))
 
 (defmacro defcli (name &rest rest)
-  (pprint rest)
   `(progn
      (defparameter ,name (make-instance 'command-line-interface))
+     (setf (slot-value ,name 'name) ',name)
      (mapcar (lambda (item) (register-command ,name (car item) (eval (cadr item)))) '(,@rest))
      (defun ,name (&rest args)
+            ,(cadar (member :doc `(,@rest) :test #'equal :key #'car))
             (execute-command ,name args))))
 
 (defun hello (name)
-  (format nil "Hello ~a" name))
+  (format nil "Hello ~a!!!" name))
 
 ;; (pprint (macroexpand '(defcli cli ("hello" #'hello) ("foo" (lambda () :bar)))))
 ;; (defcli cli ("hello" #'hello) ("foo" (lambda () :bar)))
@@ -92,3 +105,15 @@
 ;; (cli "foo")
 
 ;; (helper cli)
+
+;; (macroexpand-1 '(defcli cli (hello #'hello) (:post (lambda () "Post")) (:doc "Doc for cli")))
+
+;; (defcli cli (hello #'hello) (foo (lambda () (format t "Bar"))) (:post (lambda (command args result) (format t "Post"))) (:doc "Doc for cli"))
+
+;; ;; (documentation #'cli 'function)
+
+;; (describe #'cli)
+;; (describe cli)
+
+;; (cli "foo")
+;; (cli "hello clish")
