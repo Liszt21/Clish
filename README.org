@@ -1,5 +1,25 @@
-* clish 
+#+TITLE: Clish
 
-** Usage
+* Installation
+#+begin_src shell
+# use roswell
+ros install Liszt21/Clish
 
-** Installation
+# local projects
+git clone https://github.com/Liszt21/Clish ${path-to-local-projects}/Clish
+#+end_src
+
+* Usage
+#+begin_src lisp
+(ql:quickload "clish")
+
+;; defcli
+;; (defcli NAME [(COMMAND FUNCTION)...])
+
+(clish:defcli cli
+    (nil (lambda () "Default"))
+    (hello (lambda (name) (format nil "Hello ~A!" name))))
+
+(cli) ;; => "Default"
+(cli "hello cli") ;; => "Hello cli!"
+#+end_src
