@@ -28,7 +28,7 @@
 
 (defun decode-arguments (source)
   ;; (declare (source)) ;; TODO declare type
-  (mapcar #'decode-argument (if (stringp source) (split source) source)))
+  (mapcar #'decode-argument source))
 
 (defun restruct-arguments (&optional arguments)
   (let ((keys '())
@@ -57,7 +57,7 @@
 
 (defmethod execute-command ((x command-line-interface) arguments)
   (let* ((cmds (slot-value x 'commands))
-         (args (apply #'restruct-arguments arguments))
+         (args (restruct-arguments arguments))
          (cmd (intern (string-upcase (car args))))
          (rest (cdr args))
          (fn (cdr (assoc cmd cmds))))
@@ -71,8 +71,6 @@
                    (post (apply (slot-value x 'post) (list cmd rest rst))))
                   rst)
             (format t "Command ~A not registered~%~A~%" cmd (helper x))))))
-
-(defmethod dispatch ((x command-line-interface) arguments))
 
 (defmethod register-command ((x command-line-interface) key value)
   (if (keywordp key)
@@ -92,6 +90,3 @@
      (defun ,name (&rest args)
             ,(cadar (member :doc `(,@rest) :test #'equal :key #'car))
             (execute-command ,name args))))
-
-(defun hello (name)
-  (format nil "Hello ~a!!!" name))

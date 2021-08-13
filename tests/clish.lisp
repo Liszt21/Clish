@@ -20,9 +20,9 @@
 
 (test test-cli
       (is (equal (test-cli) "Default"))
-      (is (equal (test-cli "hello clish") "Hello clish!"))
-      (is (equal (test-cli "concat a b") "ab"))
+      (is (equal (test-cli "hello" "clish") "Hello clish!"))
+      (is (equal (test-cli "concat" "a" "b") "ab"))
       (is (equal (test-cli "argument") '()))
-      (is (equal (test-cli "argument a b") '("a" "b")))
-      (is (equal (test-cli "argument a -b c d") (list "a" "d" :b "c")))
-      (is (equal (test-cli "argument a -b -c d") (list "a" :b t :c "d"))))
+      (is (equal (test-cli "argument" "a" "b") '("a" "b")))
+      (is (equal (test-cli "argument" "a" "-b" "-c" "d") (list "a" :b t :c "d")))
+      (is (equal (test-cli "argument" "a" '(b c)) '("a" (b c)))))
