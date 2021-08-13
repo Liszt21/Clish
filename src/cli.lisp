@@ -51,8 +51,8 @@
   ((commands :initform '())
    (name :initform nil)
    (doc :initform nil)
-   (pre :initform (lambda (&optional command args) (format t "Pre command")))
-   (post :initform (lambda (&optional command args result) (format t "Post command")))
+   (pre :initform (lambda (&optional command args) (format t "Execute command ~a with arguments ~a...~%" command args)))
+   (post :initform (lambda (&optional command args result) (format t "Execute command ~a done ~%" command)))
    (help :initform (lambda (&optional command args) "Help"))))
 
 (defmethod execute-command ((x command-line-interface) arguments)
@@ -76,7 +76,7 @@
 
 (defmethod register-command ((x command-line-interface) key value)
   (if (keywordp key)
-      (setf (slot-value x (intern (string key))) value)
+      (setf (slot-value x (intern (string key) 'clish)) value)
       (push (cons key value) (slot-value x 'commands))))
 
 (defmethod helper ((x command-line-interface))
@@ -109,8 +109,6 @@
 ;; (macroexpand-1 '(defcli cli (hello #'hello) (:post (lambda () "Post")) (:doc "Doc for cli")))
 
 ;; (defcli cli (hello #'hello) (foo (lambda () (format t "Bar"))) (:post (lambda (command args result) (format t "Post"))) (:doc "Doc for cli"))
-
-;; ;; (documentation #'cli 'function)
 
 ;; (describe #'cli)
 ;; (describe cli)
