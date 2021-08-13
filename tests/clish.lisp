@@ -12,9 +12,17 @@
       (is (equal 2 2))
       (is (not (equal 2 1))))
 
+(defcli test-cli
+  (nil (lambda () "Default"))
+  (hello (lambda (name) (format nil "Hello ~a!" name)))
+  (argument (lambda (&rest args) args))
+  (concat (lambda (a b) (concatenate 'string a b))))
+
 (test test-cli
-      (is (equal (restruct-arguments "a b -c d") '("a" "b" :c "d")))
-      (is (equal (restruct-arguments "a -b c d") '("a" "d" :b "c")))
-      (is (equal (restruct-arguments '("a" "-b" "c" "d")) '("a" "d" :b "c")))
-      (is (equal (progn (defcli cli ("hello" (lambda (name) (format nil "Hello ~a!" name)))) (cli "hello clish"))
-                 "Hello clish!")))
+      (is (equal (test-cli) "Default"))
+      (is (equal (test-cli "hello clish") "Hello clish!"))
+      (is (equal (test-cli "concat a b") "ab"))
+      (is (equal (test-cli "argument") '()))
+      (is (equal (test-cli "argument a b") '("a" "b")))
+      (is (equal (test-cli "argument a -b c d") (list "a" "d" :b "c")))
+      (is (equal (test-cli "argument a -b -c d") (list "a" :b t :c "d"))))

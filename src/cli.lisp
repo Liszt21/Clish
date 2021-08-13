@@ -30,7 +30,7 @@
   ;; (declare (source)) ;; TODO declare type
   (mapcar #'decode-argument (if (stringp source) (split source) source)))
 
-(defun restruct-arguments (arguments)
+(defun restruct-arguments (&optional arguments)
   (let ((keys '())
         (cmds '())
         (args (decode-arguments arguments)))
@@ -95,23 +95,3 @@
 
 (defun hello (name)
   (format nil "Hello ~a!!!" name))
-
-;; (pprint (macroexpand '(defcli cli ("hello" #'hello) ("foo" (lambda () :bar)))))
-;; (defcli cli ("hello" #'hello) ("foo" (lambda () :bar)))
-
-;; (slot-value cli 'commands)
-
-;; (cli "hello clish")
-;; (cli "foo")
-
-;; (helper cli)
-
-;; (macroexpand-1 '(defcli cli (hello #'hello) (:post (lambda () "Post")) (:doc "Doc for cli")))
-
-;; (defcli cli (hello #'hello) (foo (lambda () (format t "Bar"))) (:post (lambda (command args result) (format t "Post"))) (:doc "Doc for cli"))
-
-;; (describe #'cli)
-;; (describe cli)
-
-;; (cli "foo")
-;; (cli "hello clish")
