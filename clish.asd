@@ -2,7 +2,7 @@
   :version "0.1.1"
   :author "Liszt21"
   :license ""
-  :depends-on ()
+  :depends-on ("str")
   :serial t
   :components ((:module "src"
                 :components

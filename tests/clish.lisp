@@ -26,3 +26,7 @@
       (is (equal (test-cli "argument" "a" "b") '("a" "b")))
       (is (equal (test-cli "argument" "a" "-b" "-c" "d") (list "a" :b t :c "d")))
       (is (equal (test-cli "argument" "a" '(b c)) '("a" (b c)))))
+
+(test test-shell
+      (is (equal (shell "exit -1") 255))
+      (is (equal (shell "exit 0") 0)))
