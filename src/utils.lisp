@@ -39,15 +39,10 @@
   (format nil
           "function ~A {~%~A  ~A ~A;~A~%}"
           name
-          (if directory
-              (format nil "  cd ~A;~%" #+os-windows "$OLDPWD=pwd;" #-os-windows "" directory)
-              "")
+          (if directory (format nil "  ~Acd ~A;~%" #+os-windows "$OLDPWD=pwd;" #-os-windows "" directory) "")
           command
-          #+os-windows "$args"
-          #-os-windows "\"$@\""
-          (if directory
-              (format nil "~%  cd $OLDPWD;")
-              "")))
+          #+os-windows "$args" #-os-windows "\"$@\""
+          (if directory (format nil "~%  cd $OLDPWD;") "")))
 
 (defmacro maintain-entry (&key insert remove)
     `(with-profile (ctx :section "clish"
