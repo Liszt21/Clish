@@ -41,21 +41,22 @@
 ;;     (nreverse (car parents))))
 
 (defmacro maintain-entry (&key insert remove)
-    #-os-windows
     `(with-profile (ctx :section "clish"
-                        :module ,(cond ((uiop:getenv "ZSH") "zsh")
-                                       (t "bash")))
-        (when ,remove
-            (splice ctx (position ,remove ctx :test #'equal)))
+                        :module
+                        #+os-windows "profile"
+                        #-os-windows ,(cond ((uiop:getenv "ZSH") "zsh") (t "bash")))
+        ,(when remove
+          `(let ((index (position ,remove ctx :test #'equal)))
+            (when index
+                (setf ctx (splice ctx index)))))
         (setf ctx
             (loop for line in ctx
-                    while (or (not (str:starts-with-p "source" line))
-                              (probe-file (subseq line 7)))
-                    collect line))
-        (when (and ,insert
-                    (not (position ,insert ctx :test #'equal)))
-            (push ,insert ctx))))
-
+                  while (or (not (str:starts-with-p #+os-windows ". " #-os-windows "source " line))
+                            (probe-file (subseq line #+os-windows 2 #-os-windows 7)))
+                  collect line))
+        ,(when insert
+            `(when (not (position ,insert ctx :test #'equal))
+                (push ,insert ctx)))))
 
 (defmacro with-profile (options &body body)
   (destructuring-bind (ref &key section (module "clish") (remove-if-empty t)) options
@@ -70,8 +71,8 @@
            (begin (if section (position begin-mark content :test #'equal) 0))
            (end (if (and section begin) (position end-mark content :test #'equal :start begin) content-length)))
 
-      (when (null (position module '("bash" "zsh" "fish")))
-        (maintain-entry :insert (format nil "source ~A" path)))
+      (when (null (position module '("bash" "zsh" "fish" "profile") :test #'equal))
+        (maintain-entry :insert (format nil "~A ~A" #+os-windows "." #-os-windows "source" path)))
 
       `(let ((,ref (list ,@(if (and section begin) (subseq content (+ begin 1) end) '()))))
          ,@body
@@ -84,11 +85,7 @@
                                          (append ,(if begin-mark `(list ,begin-mark))
                                                  ,ref
                                                  ,(if end-mark `(list ,end-mark)))))) out))
-         #-os-windows
-         (when (and
-                (not section)
-                (or (null ,ref) (zerop (length ,ref)))
-                remove-if-empty)
-           (maintain-entry :remove (format nil "source ~A" ,path)))))))
-
+         ,(when (and (not section) remove-if-empty)
+            `(when (or (null ,ref) (zerop (length ,ref)))
+                 (maintain-entry :remove ,(format nil "~A ~A" #+os-windows "." #-os-windows "source" path))))))))
 
