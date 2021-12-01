@@ -6,4 +6,5 @@
    :repl
    :shell
    :defcli
-   :cli))
+   :cli
+   :with-profile))
