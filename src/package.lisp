@@ -7,4 +7,5 @@
    :shell
    :defcli
    :cli
-   :with-profile))
+   :with-profile
+   :generate-alias-define))
