@@ -1,9 +1,17 @@
 (in-package :clish)
 
+(defun flatten (x)
+  (labels ((rec (x acc)
+            (cond
+              ((null x) acc)
+              ((atom x) (cons x acc))
+              (t (rec (car x) (rec (cdr x) acc))))))
+    (rec x nil)))
+
 (defun get-function-arguments (fn)
   (let ((stream (make-string-output-stream)))
     (describe fn stream)
-    (car (member "Lambda-list:" (split (get-output-stream-string stream) #\NewLine) :test #'search))))
+    (car (member "Lambda-list:" (split (get-output-stream-string stream) (format nil "~%")) :test #'search))))
 
 (defun decode-argument (source)
   (if (position #\- source)
@@ -31,6 +39,14 @@
       (push t keys))
     (append (reverse cmds) (reverse keys))))
 
+(defun parse-arguments (&rest args)
+  (flatten
+   (loop for arg in args
+         collect (cond
+                   ((stringp arg) (restruct-arguments (split " " arg)))
+                   ((consp arg) (apply #'parse-argument arg))
+                   (t nil)))))
+
 (defclass command-line-interface ()
   ((commands :initform '())
    (name :initform nil)
@@ -41,7 +57,7 @@
 
 (defmethod execute-command ((x command-line-interface) arguments)
   (let* ((cmds (slot-value x 'commands))
-         (args (restruct-arguments arguments))
+         (args (parse-arguments arguments))
          (cmd (intern (string-upcase (car args))))
          (rest (cdr args))
          (fn (cdr (assoc cmd cmds))))
