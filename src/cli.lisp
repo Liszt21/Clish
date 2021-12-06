@@ -44,7 +44,7 @@
    (loop for arg in args
          collect (cond
                    ((stringp arg) (restruct-arguments (split " " arg)))
-                   ((consp arg) (apply #'parse-argument arg))
+                   ((consp arg) (apply #'parse-arguments arg))
                    (t nil)))))
 
 (defclass command-line-interface ()
