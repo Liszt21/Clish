@@ -1,5 +1,7 @@
 (in-package :clish)
 
+(defpackage :command)
+
 (defun flatten (x)
   (labels ((rec (x acc)
             (cond
@@ -11,7 +13,7 @@
 (defun get-function-arguments (fn)
   (let ((stream (make-string-output-stream)))
     (describe fn stream)
-    (car (member "Lambda-list:" (split (get-output-stream-string stream) (format nil "~%")) :test #'search))))
+    (car (member "Lambda-list:" (split #\NewLine (get-output-stream-string stream)) :test #'search))))
 
 (defun decode-argument (source)
   (if (position #\- source)
@@ -58,11 +60,11 @@
 (defmethod execute-command ((x command-line-interface) arguments)
   (let* ((cmds (slot-value x 'commands))
          (args (parse-arguments arguments))
-         (cmd (intern (string-upcase (car args))))
+         (cmd (intern (string-upcase (string (car arguments))) 'command))
          (rest (cdr args))
          (fn (cdr (assoc cmd cmds))))
     (if (member :help args)
-        (format t "Help command: ~a~%~A~%"
+        (format t "~%Help command: ~a~%~A~%"
                 cmd
                 (if fn (get-function-arguments fn) "Command not registered"))
         (if fn
@@ -70,12 +72,12 @@
                    (rst (apply fn rest))
                    (post (apply (slot-value x 'post) (list cmd rest rst))))
                   rst)
-            (format t "Command ~A not registered~%~A~%" cmd (helper x))))))
+            (format t "~%Command ~A not registered~%~A~%" cmd (helper x))))))
 
 (defmethod register-command ((x command-line-interface) key value)
   (if (keywordp key)
       (setf (slot-value x (intern (string key) 'clish)) value)
-      (push (cons key value) (slot-value x 'commands))))
+      (push (cons (intern (string key) 'command) value) (slot-value x 'commands))))
 
 (defmethod helper ((x command-line-interface))
   (let ((cmds (slot-value x 'commands)))
