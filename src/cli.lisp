@@ -92,3 +92,54 @@
      (defun ,name (&rest args)
             ,(cadar (member :doc `(,@rest) :test #'equal :key #'car))
             (execute-command ,name args))))
+
+#+os-windows
+(progn
+  (defun flatten (x)
+    (labels ((rec (x acc)
+               (cond
+                 ((null x) acc)
+                 ((atom x) (cons x acc))
+                 (t (rec (car x) (rec (cdr x) acc))))))
+      (rec x nil)))
+
+  (defun detect-roswell ()
+    (loop for folder in (append
+                          '("~/.roswell")
+                          (list #+os-windows
+                                (when (uiop:getenv "SCOOP")
+                                  (concatenate 'string
+                                               (uiop:getenv "SCOOP")
+                                               "/apps/roswell/current/"))
+                                (uiop:getenv "ROSWELL")))
+          when (and folder (probe-file folder))
+          collect (probe-file folder)))
+
+  (defun detect-roswell-scripts ()
+    (flatten
+      (loop for folder in (detect-roswell)
+            for bin = (merge-pathnames
+                        (make-pathname :name :wild)
+                        (merge-pathnames "bin/" folder))
+            for ql-bin = (merge-pathnames
+                          (make-pathname :name :wild :type "ros")
+                          (merge-pathnames "lisp/quicklisp/bin/" folder))
+            collect (directory bin)
+            collect (directory ql-bin))))
+
+  (defun generate-alias-function (file)
+    (format nil "function ~A {~%  ros ~A $args~%}~%" (pathname-name file) file))
+
+  (defcli rosw
+      (nil (lambda ()
+             (format t "Write alias to clish#rosw~%")
+             (with-profile (ctx :section "rosw")
+               (setf ctx '())
+               (dolist (file (reverse (detect-roswell-scripts)))
+                 (push (generate-alias-function file) ctx))
+               (pprint ctx)
+               (format t "~%"))))
+    (clean (lambda ()
+             (format t "Clean alias in clish#rosw~%")
+             (with-profile (ctx :section "rosw")
+               (setf ctx nil))))))

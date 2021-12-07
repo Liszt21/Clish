@@ -29,7 +29,6 @@
          (setf /// // // / / (multiple-value-list (eval -)))
          (setf *** ** ** * * (first /))
          (format t "~& --> ~{~S~^ ;~%     ~}~%" /))))
-  
 
 (defun read-shell-script (stream)
   (loop for c = (read-char)
@@ -44,6 +43,6 @@
   (repl))
 
 (defcli cli
-    (nil #'repl)
+  (nil #'repl)
   ("help" (lambda (command) (format t "Help ~a" command))))
 

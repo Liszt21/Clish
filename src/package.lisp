@@ -7,5 +7,6 @@
    :shell
    :defcli
    :cli
+   #+os-windows :rosw
    :with-profile
    :generate-alias-define))

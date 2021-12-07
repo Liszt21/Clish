@@ -1,5 +1,5 @@
 (defsystem "clish"
-  :version "0.1.1"
+  :version "0.1.2"
   :author "Liszt21"
   :license ""
   :depends-on ("str")
