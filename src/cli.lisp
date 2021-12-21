@@ -66,8 +66,10 @@
 (defmethod helper ((x command-line-interface))
   (format t "Helper for ~A:~%" (slot-value x 'name))
   (let ((cmds (slot-value x 'commands)))
-    (concatenate 'string (format nil "Commands:~%")
-                 (join "" (mapcar (lambda (item) (format nil "    ~A: ~A~%" (car item) (get-function-arguments (cdr item)))) cmds)))))
+    (format t "~{  ~A~}~%"
+            (mapcar (lambda (item)
+                      (format nil "~9:A: ~A~%" (car item) (get-function-arguments (cdr item))))
+                    cmds))))
 
 (defmethod execute-command ((x command-line-interface) arguments)
   (let* ((cmds (slot-value x 'commands))
