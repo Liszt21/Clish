@@ -31,11 +31,13 @@
          (format t "~& --> ~{~S~^ ;~%     ~}~%" /))))
 
 (defun read-shell-script (stream)
+  (declare (ignorable stream))
   (loop for c = (read-char)
         while (not (char= c #\NewLine))
         collect c))
 
 (defun shell-mode (stream char)
+  (declare (ignorable stream char))
   (let ((script (read-line stream)));; FIXME need double #\NewLine
     (shell script)))
 
