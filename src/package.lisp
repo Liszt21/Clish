@@ -1,5 +1,5 @@
 (defpackage clish
-  (:use :cl :alexandria :inferior-shell)
+  (:use :cl :alexandria :inferior-shell :likit)
   (:import-from :str :join :split)
   (:export
    :main
