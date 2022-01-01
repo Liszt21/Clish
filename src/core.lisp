@@ -39,7 +39,7 @@
 (defun shell-mode (stream char)
   (declare (ignorable stream char))
   (let ((script (read-line stream)));; FIXME need double #\NewLine
-    (shell script)))
+    (run/i script)))
 
 (defun main ()
   (repl))

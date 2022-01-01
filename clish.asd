@@ -2,7 +2,7 @@
   :version "0.1.2"
   :author "Liszt21"
   :license ""
-  :depends-on ("str")
+  :depends-on ("str" "likit" "alexandria" "inferior-shell")
   :serial t
   :components ((:module "src"
                 :components
