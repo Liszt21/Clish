@@ -42,15 +42,14 @@
           (if (keywordp (car keys))
               (push arg keys)
               (push arg cmds))))
-    (when (keywordp (car keys))
-      (push t keys))
+    (when (keywordp (car keys)) (push t keys))
     (append (if (zerop (length cmds)) '(nil)) (reverse cmds) (reverse keys))))
 
 (defun execute-command (command arguments)
   (destructuring-bind (name fn &rest options) command
     (declare (ignore name options))
     (if (member :help arguments)
-        (format t "~A~%" (get-function-arguments (ensure-function fn)))
+        (format t "~A~%" (get-function-arguments (eval fn)))
         (apply (if (functionp fn) fn (eval fn)) arguments))))
 
 (defclass command-line-interface ()
@@ -58,35 +57,42 @@
    (docs :accessor cli-docs :initarg :docs :initform nil)
    (help :initarg :help :initform nil)
    (after :initarg :after :initform nil)
-   (before :initarg :before :initform nil)))
+   (before :initarg :before :initform nil)
+   (default :accessor cli-default :initarg :default :initform nil)))
 
 (defmethod display-commands ((x command-line-interface))
   (let ((cmds (cli-cmds x)))
     (format t "~{  ~A~}~%"
             (mapcar (lambda (item)
-                      (format nil "~9:A: ~A~%" (car item) (get-function-arguments (cdr item))))
+                      (format nil "~9:A: ~A~%" (car item) (get-function-arguments (eval (cadr item)))))
                     cmds))))
 
 (defmethod dispatch-command ((instance command-line-interface) arguments)
-  (let* ((commands (cli-cmds instance))
+  (let* ((default (cli-default instance))
+         (commands (cli-cmds instance))
+         (before (slot-value instance 'before))
+         (after (slot-value instance 'after))
+         ;; (help (slot-value instance 'help))
          (arguments (apply #'wrap-arguments arguments))
          (cmd (assoc (string-upcase (car arguments)) commands :test #'string=))
-         (args (cdr arguments)))
-    (if cmd
-        (let ((before (slot-value instance 'before))
-              (after (slot-value instance 'after))
-              (result (execute-command cmd args)))
-          (when before (funcall (ensure-function before) args))
-          (when after (funcall (ensure-function after) args result))
-          result)
-        (display-commands instance))))
+         (args (cdr arguments))
+         (result))
+    (if (not (or cmd default))
+        (display-commands instance)
+        (progn
+          (when before (funcall (eval before) args))
+          (setf result (if cmd
+                           (execute-command cmd args)
+                           (apply (eval default) arguments)))
+          (when after (funcall (eval after) args result))))
+    result))
 
 (defmacro defcli (name (&rest config &key docs &allow-other-keys) &rest cmds)
   `(progn
-     (defparameter ,name (make-instance 'command-line-interface ,@config :cmds ',cmds))
-     (defun ,name (&rest arguments)
-       ,docs
-       (dispatch-command ,name arguments))))
+    (defparameter ,name (make-instance 'command-line-interface ,@config :cmds ',cmds))
+    (defun ,name (&rest arguments)
+      ,docs
+      (dispatch-command ,name arguments))))
 
 #+os-windows
 (progn
