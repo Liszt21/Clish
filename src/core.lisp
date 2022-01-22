@@ -44,7 +44,7 @@
 (defun main ()
   (repl))
 
-(defcli cli
+(defcli cli ()
   (nil #'repl)
   ("help" (lambda (command) (format t "Help ~a" command))))
 

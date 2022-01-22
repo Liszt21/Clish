@@ -2,25 +2,38 @@
 
 (defpackage :command)
 
+;; utilities
 (defun get-function-arguments (fn)
   (let ((stream (make-string-output-stream)))
     (describe fn stream)
-    (car (member "Lambda-list:" (split #\NewLine (get-output-stream-string stream)) :test #'search))))
+    (car (member "Lambda-list:" (str:split #\NewLine (get-output-stream-string stream)) :test #'search))))
 
-(defun decode-argument (source)
-  (if (position #\- source)
-      (intern (string-upcase (string-left-trim '(#\- ) source)) :keyword)
-      source))
+(defun trim (string &optional (char #\Space))
+ (if (char= (char string 0) char)
+   (trim (subseq string 1) char)
+   string))
 
-(defun decode-arguments (source)
-  ;; (declare (source)) ;; TODO declare type
-  (mapcar #'decode-argument source))
+(defmacro start-with-p (string prefix &rest prefixs)
+  `(or (str:starts-with? ,prefix ,string) ,@(loop for pre in prefixs collect `(str:starts-with? ,pre ,string))))
 
-(defun restruct-arguments (&optional arguments)
-  (let ((keys '())
+(defun read-and-eval (stream char1 char2) (declare (ignore char1 char2)) (read stream t nil t))
+
+(set-dispatch-macro-character #\# #\n #'read-and-eval)
+
+(defun lisp-code-p (string) (start-with-p string "'(" "#(" "(" "#x" "#b" "#c" "#n"))
+
+(defun parse-argument (argument)
+  (cond
+    ((not (stringp argument)) argument)
+    ((lisp-code-p argument) (with-input-from-string (in argument) (eval (read in))))
+    ((start-with-p argument "-") (intern (string-upcase (trim argument #\-)) 'keyword))
+    (t argument)))
+
+(defun wrap-arguments (&rest args)
+  (let ((wrapped (mapcar #'parse-argument args))
         (cmds '())
-        (args (decode-arguments arguments)))
-    (dolist (arg args)
+        (keys '()))
+    (dolist (arg wrapped)
       (if (keywordp arg)
           (progn
             (if (keywordp (car keys))
@@ -31,70 +44,49 @@
               (push arg cmds))))
     (when (keywordp (car keys))
       (push t keys))
-    (append (reverse cmds) (reverse keys))))
+    (append (if (zerop (length cmds)) '(nil)) (reverse cmds) (reverse keys))))
 
-(defun parse-arguments (&rest args)
-  (flatten
-   (loop for arg in args
-         collect (cond
-                   ((stringp arg) (restruct-arguments (split " " arg)))
-                   ((consp arg) (apply #'parse-arguments arg))
-                   (t nil)))))
+(defun execute-command (command arguments)
+  (destructuring-bind (name fn &rest options) command
+    (declare (ignore name options))
+    (if (member :help arguments)
+        (format t "~A~%" (get-function-arguments (ensure-function fn)))
+        (apply (if (functionp fn) fn (eval fn)) arguments))))
 
 (defclass command-line-interface ()
-  ((commands :initform '())
-   (name :initform nil)
-   (doc :initform nil)
-   (pre :initform (lambda (&optional command args) (format t "Execute command ~a with arguments ~a...~%" command args)))
-   (post :initform (lambda (&optional command args result)
-                     (declare (ignorable command args result))
-                     (format t "Execute command ~a done ~%" command)))
-   (default :initform (lambda (&rest args) (format t "Command ~A with args: [~{ ~A~} ] not registered~%" (car args) (cdr args))))
-   (help :initform (lambda (&optional command args)
-                     (declare (ignorable command args))
-                     "Help"))))
+  ((cmds :accessor cli-cmds :initarg :cmds :initform '())
+   (docs :accessor cli-docs :initarg :docs :initform nil)
+   (help :initarg :help :initform nil)
+   (after :initarg :after :initform nil)
+   (before :initarg :before :initform nil)))
 
-(defmethod register-command ((x command-line-interface) key value)
-  (if (keywordp key)
-      (setf (slot-value x (intern (string key) 'clish)) value)
-    (push (cons (intern (string key) 'command) value) (slot-value x 'commands))))
-
-(defmethod helper ((x command-line-interface))
-  (format t "Helper for ~A:~%" (slot-value x 'name))
-  (let ((cmds (slot-value x 'commands)))
+(defmethod display-commands ((x command-line-interface))
+  (let ((cmds (cli-cmds x)))
     (format t "~{  ~A~}~%"
             (mapcar (lambda (item)
                       (format nil "~9:A: ~A~%" (car item) (get-function-arguments (cdr item))))
                     cmds))))
 
-(defmethod execute-command ((x command-line-interface) arguments)
-  (let* ((cmds (slot-value x 'commands))
-         (args (parse-arguments arguments))
-         (cmd (intern (string-upcase (string (car arguments))) 'command))
-         (rest (cdr args))
-         (fn (cdr (assoc cmd cmds))))
-    (if (member :help args)
-        (format t "~%Help command: ~a~%~A~%"
-                cmd
-                (if fn (get-function-arguments fn) "Command not registered"))
-        (if fn
-          (let* ((pre (apply (slot-value x 'pre) (list cmd rest)))
-                 (rst (apply fn rest))
-                 (post (apply (slot-value x 'post) (list cmd rest rst))))
-            (declare (ignorable pre post))
-            rst)
-          (if (car args)
-            (apply (slot-value x 'default) args)
-            (helper x))))))
+(defmethod dispatch-command ((instance command-line-interface) arguments)
+  (let* ((commands (cli-cmds instance))
+         (arguments (apply #'wrap-arguments arguments))
+         (cmd (assoc (string-upcase (car arguments)) commands :test #'string=))
+         (args (cdr arguments)))
+    (if cmd
+        (let ((before (slot-value instance 'before))
+              (after (slot-value instance 'after))
+              (result (execute-command cmd args)))
+          (when before (funcall (ensure-function before) args))
+          (when after (funcall (ensure-function after) args result))
+          result)
+        (display-commands instance))))
 
-(defmacro defcli (name &rest rest)
+(defmacro defcli (name (&rest config &key docs &allow-other-keys) &rest cmds)
   `(progn
-     (defparameter ,name (make-instance 'command-line-interface))
-     (setf (slot-value ,name 'name) ',name)
-     (mapcar (lambda (item) (register-command ,name (car item) (eval (cadr item)))) '(,@rest))
-     (defun ,name (&rest args)
-            ,(cadar (member :doc `(,@rest) :test #'equal :key #'car))
-            (execute-command ,name args))))
+     (defparameter ,name (make-instance 'command-line-interface ,@config :cmds ',cmds))
+     (defun ,name (&rest arguments)
+       ,docs
+       (dispatch-command ,name arguments))))
 
 #+os-windows
 (progn
@@ -125,16 +117,17 @@
   (defun generate-alias-function (file)
     (format nil "function ~A {~%  ros ~A $args~%}~%" (pathname-name file) file))
 
-  (defcli rosw
-      (nil (lambda ()
-             (format t "Write alias to clish#rosw~%")
-             (with-profile (ctx :section "rosw")
-               (setf ctx '())
-               (dolist (file (reverse (detect-roswell-scripts)))
-                 (push (generate-alias-function file) ctx))
-               (pprint ctx)
-               (format t "~%"))))
+  (defcli rosw ()
+    (nil (lambda ()
+           (format t "Write alias to clish#rosw~%")
+           (with-profile (ctx :section "rosw")
+             (setf ctx '())
+             (dolist (file (reverse (detect-roswell-scripts)))
+               (push (generate-alias-function file) ctx))
+             (pprint ctx)
+             (format t "~%"))))
     (clean (lambda ()
              (format t "Clean alias in clish#rosw~%")
              (with-profile (ctx :section "rosw")
                (setf ctx nil))))))
+
