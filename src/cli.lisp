@@ -74,7 +74,10 @@
          (after (slot-value instance 'after))
          ;; (help (slot-value instance 'help))
          (arguments (apply #'wrap-arguments arguments))
-         (cmd (assoc (string-upcase (car arguments)) commands :test #'string=))
+         (first (car arguments))
+         (cmd (and (or (stringp first)
+                       (symbolp first))
+                   (assoc (string-upcase first) commands :test #'string=)))
          (args (cdr arguments))
          (result))
     (if (not (or cmd default))
@@ -87,12 +90,19 @@
           (when after (funcall (eval after) args result))))
     result))
 
-(defmacro defcli (name (&rest config &key docs &allow-other-keys) &rest cmds)
-  `(progn
-    (defparameter ,name (make-instance 'command-line-interface ,@config :cmds ',cmds))
-    (defun ,name (&rest arguments)
-      ,docs
-      (dispatch-command ,name arguments))))
+(defmacro defcli (name &rest commands)
+  (let ((docs (cadr (assoc :docs commands)))
+        (config '())
+        (cmds '()))
+    (dolist (cmd commands)
+      (if (keywordp (car cmd))
+          (setf (getf config (car cmd)) (cadr cmd))
+          (push cmd cmds)))
+    `(progn
+       (defparameter ,name (make-instance 'command-line-interface ,@config :cmds ',cmds))
+       (defun ,name (&rest arguments)
+         ,docs
+         (dispatch-command ,name arguments)))))
 
 #+os-windows
 (progn
